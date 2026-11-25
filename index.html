@@ -8,3 +8,20 @@ const supabaseClient = window.supabase.createClient(
   'sb_publishable_yK4zyy6yzYB_bs7wiSWBJg_VmCB8L4A'
 );
 </script>
+
+<script>
+async function testarConexao() {
+  const { data, error } = await supabaseClient
+    .from('campanhas')
+    .select('id')
+    .limit(1);
+
+  if (error) {
+    alert('Erro: ' + error.message);
+  } else {
+    alert('Supabase conectado com sucesso!');
+  }
+}
+
+testarConexao();
+</script>
