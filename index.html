@@ -10,13 +10,10 @@ main{max-width:650px;margin:auto;padding:20px}
 header{text-align:center}
 h1,h2,strong{color:#e6bd65}
 section{background:#202020;border:1px solid #51442d;border-radius:14px;padding:18px;margin:15px 0}
-button,input{font:inherit;padding:12px;border-radius:8px;border:1px solid #78643e;margin:4px}
-button{background:#e6bd65;color:#111;cursor:pointer;font-weight:bold}
-input{background:#111;color:white;max-width:85%}
+button{font:inherit;padding:12px;border-radius:8px;border:1px solid #78643e;background:#e6bd65;color:#111;cursor:pointer;font-weight:bold}
 small{color:#bbb}
-.ticket{display:inline-block;padding:6px;margin:3px;background:#333;border-radius:5px}
-.win{background:#e6bd65;color:#111}
 progress{width:100%;accent-color:#e6bd65}
+.ticket{display:inline-block;padding:8px;margin:3px;background:#333;border-radius:5px}
 </style>
 </head>
 <body>
@@ -29,187 +26,112 @@ progress{width:100%;accent-color:#e6bd65}
 
 <section>
 <h2>Conexão com Supabase</h2>
-<p id="conexao">Verificando conexão...</p>
-<button id="testar">Testar conexão</button>
+<p id="conexao">Conectando...</p>
+<button id="testar">Atualizar dados</button>
 </section>
 
 <section>
 <small>PRÊMIO FICTÍCIO</small>
 <h1>R$ 2.000,00</h1>
 <progress id="progress" max="10000" value="0"></progress>
-<p id="count"></p>
+<p id="count">Carregando...</p>
 </section>
 
 <section>
-<h2>Simular participação</h2>
-<div id="choices"></div>
-<label>Quantidade
-<input id="qty" type="number" min="1" max="500" value="20">
-</label>
-<p id="total"></p>
-<button id="go">Gerar cotas gratuitas de teste</button>
-<p id="msg" role="status"></p>
+<h2>Controle de cotas</h2>
+<p>Registradas: <strong id="ocupadas">—</strong></p>
+<p>Restantes: <strong id="restantes">—</strong></p>
+<small>Dados compartilhados pelo Supabase.</small>
 </section>
 
 <section>
-<h2>Cotas premiadas fictícias</h2>
-<div id="prizes"></div>
+<h2>Cotas registradas no banco</h2>
+<div id="numeros"></div>
 </section>
 
 <section>
-<h2>Minhas cotas</h2>
-<div id="history"></div>
+<h2>Participação demonstrativa</h2>
+<p>Geração de cotas temporariamente indisponível durante a integração.</p>
 </section>
 
 <section>
 <h2>Painel demonstrativo</h2>
-<p id="stats"></p>
-<small>Sem autenticação; dados deste navegador apenas.</small>
-<br>
-<button id="reset">Limpar testes</button>
+<p id="stats">Aguardando conexão...</p>
+<small>Atualização automática a cada 10 segundos.</small>
 </section>
 </main>
-
-<script>
-const $ = id => document.getElementById(id);
-const key = 'gomes-demo-v1';
-const prizes = [125,1450,3870,5920,8945];
-
-let records = [];
-
-try {
- records = JSON.parse(localStorage.getItem(key) || '[]');
-} catch {}
-
-const fmt = n => String(n).padStart(4,'0');
-
-function save(){
- try {
- localStorage.setItem(key,JSON.stringify(records));
- } catch {
- $('msg').textContent = 'Armazenamento local indisponível.';
- }
-}
-
-function render(){
- const used = new Set(records.flat());
-
- $('progress').value = used.size;
- $('count').textContent = used.size + ' / 10.000 cotas simuladas';
-
- $('prizes').textContent = prizes.map(n =>
- fmt(n) + ' — ' + (used.has(n) ? 'Encontrada' : 'Disponível')
- ).join(' | ');
-
- $('history').replaceChildren();
-
- for(const r of records){
- const p = document.createElement('p');
- p.textContent = r.length + ' cotas • ' +
- r.filter(n => prizes.includes(n)).length +
- ' premiadas fictícias';
-
- $('history').append(p);
-
- for(const n of r){
- const s = document.createElement('span');
- s.className = 'ticket' + (prizes.includes(n) ? ' win' : '');
- s.textContent = fmt(n);
- $('history').append(s);
- }
- }
-
- $('stats').textContent = records.length +
- ' participações; ' + (10000-used.size) +
- ' cotas restantes.';
-}
-
-function total(){
- $('total').textContent = 'Valor ilustrativo: R$ ' +
- $('qty').value + ',00 (sem cobrança)';
-}
-
-for(const n of [10,20,50,100,200,500]){
- const b = document.createElement('button');
- b.textContent = n;
- b.onclick = () => {
- $('qty').value = n;
- total();
- };
- $('choices').append(b);
-}
-
-$('qty').oninput = total;
-
-$('go').onclick = () => {
- const q = Number($('qty').value);
- const used = new Set(records.flat());
- const pool = Array.from({length:10000},(_,i)=>i)
- .filter(n=>!used.has(n));
-
- if(!Number.isInteger(q)||q<1||q>500||q>pool.length){
- $('msg').textContent = 'Quantidade inválida ou indisponível.';
- return;
- }
-
- const r = [];
-
- for(let i=0;i<q;i++){
- const j = Math.floor(Math.random()*pool.length);
- r.push(pool[j]);
- pool[j] = pool[pool.length-1];
- pool.pop();
- }
-
- records.push(r);
- $('msg').textContent = 'Participação simulada registrada.';
- save();
- render();
-};
-
-$('reset').onclick = () => {
- if(confirm('Apagar todas as participações locais?')){
- records = [];
- save();
- render();
- }
-};
-
-total();
-render();
-</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-async function testarConexao(){
- const status = document.getElementById('conexao');
- status.textContent = 'Verificando conexão...';
+const $ = id => document.getElementById(id);
 
- try {
- const cliente = window.supabase.createClient(
- 'https://vggbtsfnexvhxkzwbgnv.supabase.co',
- 'sb_publishable_yK4zyy6yzYB_bs7wiSWBJg_VmCB8L4A'
- );
+const cliente = window.supabase.createClient(
+'https://vggbtsfnexvhxkzwbgnv.supabase.co',
+'sb_publishable_yK4zyy6yzYB_bs7wiSWBJg_VmCB8L4A'
+);
 
+const campanha = '2278d7ba-8e6b-46ec-9613-482892367e03';
+const total = 10000;
+let carregando = false;
+
+async function atualizar(){
+ if(carregando) return;
+ carregando = true;
+
+ try{
+ const numeros = new Set();
+
+ for(let inicio=0;;inicio+=500){
  const {data,error} = await cliente
- .from('campanhas')
- .select('id')
- .limit(1);
+ .from('cotas')
+ .select('numero')
+ .eq('campanha_id',campanha)
+ .order('numero')
+ .range(inicio,inicio+499);
 
  if(error) throw error;
 
- status.style.color = '#4ade80';
- status.textContent = 'Supabase conectado! Registros visíveis: ' + data.length;
+ for(const item of data){
+ numeros.add(item.numero);
+ }
 
- } catch(erro){
- status.style.color = '#f87171';
- status.textContent = 'Erro: ' + erro.message;
+ if(data.length<500) break;
+ }
+
+ const quantidade = numeros.size;
+
+ $('conexao').style.color='#4ade80';
+ $('conexao').textContent='Supabase conectado!';
+
+ $('progress').value=quantidade;
+ $('count').textContent=quantidade+' / 10.000 cotas simuladas';
+ $('ocupadas').textContent=quantidade;
+ $('restantes').textContent=total-quantidade;
+
+ $('numeros').replaceChildren();
+
+ for(const numero of numeros){
+ const span=document.createElement('span');
+ span.className='ticket';
+ span.textContent=String(numero).padStart(4,'0');
+ $('numeros').append(span);
+ }
+
+ $('stats').textContent='Última atualização: '+new Date().toLocaleTimeString('pt-BR');
+
+ }catch(erro){
+ $('conexao').style.color='#f87171';
+ $('conexao').textContent='Erro: '+erro.message;
+ $('stats').textContent='Dados não atualizados.';
+ }finally{
+ carregando=false;
  }
 }
 
-document.getElementById('testar').onclick = testarConexao;
-testarConexao();
+$('testar').onclick=atualizar;
+atualizar();
+setInterval(atualizar,10000);
 </script>
 </body>
-  </html>
+</html>
