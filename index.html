@@ -40,6 +40,9 @@ progress{width:100%;accent-color:#e6bd65}
 <input id="senha" type="password" placeholder="Sua senha" autocomplete="current-password" required>
 
 <button id="entrar" type="submit">Entrar</button>
+ <button id="recuperar" type="button">
+Esqueci minha senha
+ </button>
 </form>
 
 <div id="conta" hidden>
@@ -240,6 +243,47 @@ $('testar').onclick=atualizar;
 verificarLogin();
 atualizar();
 setInterval(atualizar,10000);
-</script>
+$('recuperar').onclick = async () => {
+  const email = $('email').value.trim();
+
+  if (!email) {
+    $('loginMsg').textContent =
+      'Informe seu e-mail.';
+    return;
+  }
+
+  const { error } =
+    await cliente.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://gomes-premiacoes.vercel.app/'
+    });
+
+  $('loginMsg').textContent = error
+    ? 'Erro: ' + error.message
+    : 'Verifique seu e-mail para recuperar a senha.';
+};cliente.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    setTimeout(async () => {
+      const senha = prompt(
+        'Digite sua nova senha (mínimo 8 caracteres):'
+      );
+
+      if (!senha || senha.length < 8) {
+        alert('Senha inválida. Solicite outro link de recuperação.');
+        return;
+      }
+
+      const { error } =
+        await cliente.auth.updateUser({
+          password: senha
+        });
+
+      if (error) {
+        alert('Erro: ' + error.message);
+      } else {
+        alert('Senha alterada com sucesso!');
+      }
+    }, 0);
+  }
+});</script>
 </body>
 </html>
