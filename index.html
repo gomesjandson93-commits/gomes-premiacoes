@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -11,18 +12,44 @@ header{text-align:center}
 h1,h2,strong{color:#e6bd65}
 section{background:#202020;border:1px solid #51442d;border-radius:14px;padding:18px;margin:15px 0}
 button{font:inherit;padding:12px;border-radius:8px;border:1px solid #78643e;background:#e6bd65;color:#111;cursor:pointer;font-weight:bold}
+input{box-sizing:border-box;width:100%;padding:12px;margin:6px 0 12px;background:#111;color:#fff;border:1px solid #78643e;border-radius:8px;font:inherit}
+button:disabled{opacity:.5;cursor:wait}
 small{color:#bbb}
 progress{width:100%;accent-color:#e6bd65}
 .ticket{display:inline-block;padding:8px;margin:3px;background:#333;border-radius:5px}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
 <main>
+
 <header>
 <h1>♛ GOMES PREMIAÇÕES</h1>
 <p>Sua sorte começa aqui</p>
 <small>DEMONSTRAÇÃO — SEM PAGAMENTOS OU PRÊMIOS REAIS</small>
 </header>
+
+<section>
+<h2>Minha conta</h2>
+
+<form id="loginForm">
+<label for="email">E-mail</label>
+<input id="email" type="email" placeholder="Seu e-mail" autocomplete="username" required>
+
+<label for="senha">Senha</label>
+<input id="senha" type="password" placeholder="Sua senha" autocomplete="current-password" required>
+
+<button id="entrar" type="submit">Entrar</button>
+</form>
+
+<div id="conta" hidden>
+<p>Usuário conectado:</p>
+<strong id="usuario"></strong>
+<p><button id="sair">Sair da conta</button></p>
+</div>
+
+<p id="loginMsg" role="status"></p>
+</section>
 
 <section>
 <h2>Conexão com Supabase</h2>
@@ -59,6 +86,7 @@ progress{width:100%;accent-color:#e6bd65}
 <p id="stats">Aguardando conexão...</p>
 <small>Atualização automática a cada 10 segundos.</small>
 </section>
+
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -75,15 +103,93 @@ const campanha = '2278d7ba-8e6b-46ec-9613-482892367e03';
 const total = 10000;
 let carregando = false;
 
-async function atualizar(){
- if(carregando) return;
- carregando = true;
+function mostrarUsuario(session){
+ const usuario = session?.user;
+
+ $('loginForm').hidden = !!usuario;
+ $('conta').hidden = !usuario;
+ $('usuario').textContent = usuario?.email || '';
+
+ if(usuario){
+ $('loginMsg').style.color='#4ade80';
+ $('loginMsg').textContent='Login realizado com sucesso!';
+ }else{
+ $('loginMsg').textContent='';
+ }
+}
+
+$('loginForm').onsubmit = async (evento)=>{
+ evento.preventDefault();
+
+ $('entrar').disabled=true;
+ $('loginMsg').style.color='#eee';
+ $('loginMsg').textContent='Entrando...';
 
  try{
- const numeros = new Set();
+ const {data,error}=await cliente.auth.signInWithPassword({
+ email:$('email').value.trim(),
+ password:$('senha').value
+ });
+
+ if(error) throw error;
+
+ $('senha').value='';
+ mostrarUsuario(data.session);
+
+ }catch(erro){
+ $('loginMsg').style.color='#f87171';
+ $('loginMsg').textContent='Não foi possível entrar: '+erro.message;
+ }finally{
+ $('entrar').disabled=false;
+ }
+};
+
+$('sair').onclick=async ()=>{
+ $('sair').disabled=true;
+
+ try{
+ const {error}=await cliente.auth.signOut();
+
+ if(error) throw error;
+
+ mostrarUsuario(null);
+ $('loginMsg').style.color='#4ade80';
+ $('loginMsg').textContent='Você saiu da conta.';
+
+ }catch(erro){
+ $('loginMsg').style.color='#f87171';
+ $('loginMsg').textContent=erro.message;
+ }finally{
+ $('sair').disabled=false;
+ }
+};
+
+cliente.auth.onAuthStateChange((evento,session)=>{
+ mostrarUsuario(session);
+});
+
+async function verificarLogin(){
+ try{
+ const {data,error}=await cliente.auth.getSession();
+
+ if(error) throw error;
+
+ mostrarUsuario(data.session);
+ }catch(erro){
+ $('loginMsg').style.color='#f87171';
+ $('loginMsg').textContent=erro.message;
+ }
+}
+
+async function atualizar(){
+ if(carregando) return;
+ carregando=true;
+
+ try{
+ const numeros=new Set();
 
  for(let inicio=0;;inicio+=500){
- const {data,error} = await cliente
+ const {data,error}=await cliente
  .from('cotas')
  .select('numero')
  .eq('campanha_id',campanha)
@@ -99,7 +205,7 @@ async function atualizar(){
  if(data.length<500) break;
  }
 
- const quantidade = numeros.size;
+ const quantidade=numeros.size;
 
  $('conexao').style.color='#4ade80';
  $('conexao').textContent='Supabase conectado!';
@@ -130,6 +236,8 @@ async function atualizar(){
 }
 
 $('testar').onclick=atualizar;
+
+verificarLogin();
 atualizar();
 setInterval(atualizar,10000);
 </script>
